@@ -1,3 +1,4 @@
-async function startAIquest(title) {
-    alert('AI Summary for: ' + title + '\nThis feature is coming soon!');
+function startAIquest(pdfUrl) {
+    const aiQuestUrl = `/ai_quest?pdf=${encodeURIComponent(pdfUrl)}`;
+    window.open(aiQuestUrl, '_blank');
 }

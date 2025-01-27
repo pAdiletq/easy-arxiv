@@ -35,7 +35,7 @@ async function searchPapers() {
                            class="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-all">
                             📄 PDF Article
                         </a>
-                        <button onclick="startAIquest('${paper.title.replace(/'/g, "\\'")}')" 
+                        <button onclick="startAIquest('${paper.pdf_link}')"
                                 class="px-4 py-2 bg-violet-100 text-violet-700 rounded-lg hover:bg-violet-200 transition-all">
                             🤖 AI Quest
                         </button>
