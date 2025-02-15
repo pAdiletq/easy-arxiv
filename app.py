@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+import requests
 import httpx
 import xml.etree.ElementTree as ET
 import urllib.parse
@@ -13,9 +14,10 @@ from fastapi.middleware.gzip import GZipMiddleware
 import json
 import io
 import PyPDF2
-
+from pydantic import BaseModel
+from dotenv import load_dotenv
 app = FastAPI()
-
+load_dotenv()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -65,7 +67,6 @@ async def ai_quest_open(pdf: str):
     html_content = html_content.replace("{{questions}}", json.dumps(questions))
 
     return HTMLResponse(content=html_content, status_code=200)
-
 @app.get("/api/getPaperData")
 async def get_paper_data(pdf: str):
     pdf_bytes = await download_pdf(pdf)
@@ -84,6 +85,46 @@ async def get_paper_data(pdf: str):
         "flashcards": flashcards,
         "questions": questions
     }
+
+@app.post("/api/orcid/callback")
+async def orcid_callback(request: Request):
+    data = await request.json()
+    auth_code = data.get('code')
+    if not auth_code:
+        raise HTTPException(status_code=400, detail="Authorization code not provided")
+
+    client_id = 'APP-62MCKIVIJOU0UD0U'
+    client_secret = '2bd7a3b1-3aef-4dd9-949f-9e9181869e13'
+    redirect_uri = 'http://127.0.0.1:5000/'
+
+    # Exchange the authorization code for an access token
+    token_response = await httpx.post('https://orcid.org/oauth/token', data={
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'grant_type': 'authorization_code',
+        'code': auth_code,
+        'redirect_uri': redirect_uri
+    })
+
+    if token_response.status_code != 200:
+        raise HTTPException(status_code=token_response.status_code, detail="Failed to fetch access token")
+
+    token_data = token_response.json()
+    access_token = token_data['access_token']
+
+    # Fetch the user's ORCID profile
+    profile_response = await httpx.get('https://pub.orcid.org/v3.0/0000-0002-1825-0097', headers={
+        'Authorization': f'Bearer {access_token}',
+        'Accept': 'application/json'
+    })
+
+    if profile_response.status_code != 200:
+        raise HTTPException(status_code=profile_response.status_code, detail="Failed to fetch ORCID profile")
+
+    profile_data = profile_response.json()
+    nickname = profile_data['person']['name']['given-names']['value']
+
+    return JSONResponse(content={"nickname": nickname})
 
 async def get_ai_highlights(text: str) -> List[Dict[str, Any]]:
     text = text[:7000]  # Limit to 7000 characters
@@ -141,7 +182,6 @@ async def get_ai_quiz_questions(flashcards: List[Dict[str, Any]]) -> List[Dict[s
     print(response)
     questions = json.loads(response)
     return questions
-
 
 async def download_pdf(pdf_url: str) -> bytes:
     """Download PDF from URL and return raw bytes."""
@@ -232,6 +272,58 @@ def calculate_reading_time(text: str) -> str:
     hours = minutes // 60
     remaining_mins = minutes % 60
     return f"{hours}h {remaining_mins}min read"
+
+CLIENT_ID = "APP-62MCKIVIJOU0UD0U"
+CLIENT_SECRET = "2bd7a3b1-3aef-4dd9-949f-9e9181869e13"
+REDIRECT_URI = "http://127.0.0.1:5000/"
+
+class AuthCode(BaseModel):
+   pass
+
+class OrcidProfileRequest(BaseModel):
+    pass
+@app.post("/get_token")
+async def get_token(data: AuthCode):
+    token_url = "https://orcid.org/oauth/token"
+    payload = {
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "grant_type": "authorization_code",
+        "code": data.code,
+        "redirect_uri": REDIRECT_URI
+    }
+    headers = {"Accept": "application/json"}
+
+    response = requests.post(token_url, data=payload, headers=headers)
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail="Ошибка получения токена")
+
+    token_data = response.json()
+    return {
+        "access_token": token_data.get("access_token"),
+        "orcid": token_data.get("orcid")
+    }
+
+@app.post("/get_orcid_profile")
+async def get_orcid_profile(data: OrcidProfileRequest):
+    orcid_api_url = f"https://pub.orcid.org/v3.0/{data.orcid}"
+    headers = {
+        "Authorization": f"Bearer {data.access_token}",
+        "Accept": "application/json"
+    }
+
+    response = requests.get(orcid_api_url, headers=headers)
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail="Ошибка при получении профиля")
+
+    profile_data = response.json()
+    user_name = profile_data.get("person", {}).get("name", {}).get("given-names", {}).get("value", "Неизвестный")
+
+    return {"nickname": user_name}
+
+
 
 if __name__ == "__main__":
     import uvicorn
