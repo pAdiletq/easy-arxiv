@@ -30,7 +30,9 @@ app.add_middleware(GZipMiddleware)
 
 genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
 model = genai.GenerativeModel('gemini-1.5-flash')
-
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+REDIRECT_URI = os.getenv("REDIRECT_URI")
 static_dir = Path("static")
 static_dir.mkdir(exist_ok=True)
 
@@ -272,10 +274,6 @@ def calculate_reading_time(text: str) -> str:
     hours = minutes // 60
     remaining_mins = minutes % 60
     return f"{hours}h {remaining_mins}min read"
-
-CLIENT_ID = "APP-62MCKIVIJOU0UD0U"
-CLIENT_SECRET = "2bd7a3b1-3aef-4dd9-949f-9e9181869e13"
-REDIRECT_URI = "http://127.0.0.1:5000/"
 
 class AuthCode(BaseModel):
    pass
