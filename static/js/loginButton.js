@@ -1,54 +1,77 @@
+async function loadConfig() {
+    try {
+        const response = await fetch("/static/data/config.json");
+        if (!response.ok) throw new Error("Ошибка загрузки config.json");
+
+        const config = await response.json();
+        if (!config.orcid_client_id || !config.redirect_uri) {
+            throw new Error("Client ID или Redirect URI отсутствуют в config.json");
+        }
+
+        window.orcidConfig = config;
+    } catch (error) {
+        console.error("Ошибка загрузки конфигурации:", error.message);
+    }
+}
+
 function startORCIDAuth() {
-    const clientId = "APP-62MCKIVIJOU0UD0U";
-    const redirectUri = "http://127.0.0.1:8000/callback";
-    const orcidAuthUrl = `https://orcid.org/oauth/authorize?client_id=${clientId}&response_type=code&scope=/authenticate&redirect_uri=${redirectUri}`;
+    if (!window.orcidConfig) {
+        console.error("Конфигурация ORCID не загружена!");
+        return;
+    }
+
+    const { orcid_client_id, redirect_uri } = window.orcidConfig;
+    const orcidAuthUrl = `https://orcid.org/oauth/authorize?client_id=${orcid_client_id}&response_type=code&scope=/authenticate&redirect_uri=${redirect_uri}`;
 
     window.location.href = orcidAuthUrl;
 }
 
-async function getORCIDToken() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const authCode = urlParams.get("code");
+window.startORCIDAuth = startORCIDAuth; // 🔥 Делаем доступной глобально
 
-    if (!authCode) {
-        alert("Ошибка: Код авторизации не найден!");
-        return;
-    }
+window.onload = async function () {
+    await loadConfig();
+};
+
+
+async function getORCIDToken() {
+    const authCode = new URLSearchParams(window.location.search).get("code");
+    if (!authCode) return;
 
     try {
-        const response = await fetch("http://127.0.0.1:8000/get_token", {
+        const response = await fetch("http://127.0.0.1:5000/get_token", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ code: authCode })
         });
 
-        const data = await response.json();
+        if (!response.ok) throw new Error("Ошибка при получении токена");
 
-        if (response.ok) {
-            showUserInfo(data);
-        } else {
-            alert("Ошибка при получении токена!");
-        }
+        const data = await response.json();
+        console.log("Ответ сервера:", data);
+
+        showUserInfo(data);
+        window.history.replaceState({}, document.title, "/"); // Убираем "code" из URL
     } catch (error) {
-        alert("Ошибка соединения с сервером!");
+        console.error("Ошибка соединения с сервером:", error.message);
     }
 }
 
 function showUserInfo(data) {
-    document.getElementById("user-info").innerHTML = `
-        <pre>
-<b>access_token</b>: ${data.access_token}
-<b>expires_in</b>: ${data.expires_in}
-<b>name</b>: ${data.name || "Неизвестный"}
-<b>orcid</b>: ${data.orcid}
-<b>refresh_token</b>: ${data.refresh_token}
-<b>scope</b>: ${data.scope}
-<b>token_type</b>: ${data.token_type}
-        </pre>
-    `;
+    const loginButton = document.getElementById("orcid-login");
+    if (!loginButton) {
+        console.error("Кнопка ORCID login не найдена!");
+        return;
+    }
+
+    loginButton.innerHTML = `<b>🔹${data.name}</b>`;
+    loginButton.style.cursor = "default";
+    loginButton.onclick = (event) => event.preventDefault(); // Отключаем клик
 }
 
-// Если в URL есть код авторизации, автоматически получаем данные
-if (new URLSearchParams(window.location.search).has("code")) {
-    getORCIDToken();
-}
+// Загружаем конфиг перед запуском
+window.onload = async function () {
+    await loadConfig(); // Ждём загрузку конфига
+    if (new URLSearchParams(window.location.search).has("code")) {
+        getORCIDToken();
+    }
+};

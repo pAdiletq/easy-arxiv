@@ -5,6 +5,9 @@ async function searchPapers() {
 
     try {
         const response = await fetch('/api/search?topic=' + encodeURIComponent(topic));
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
 
         if (data.papers.length === 0) {
@@ -57,4 +60,113 @@ async function searchPapers() {
 function setExampleTopic(topic) {
     document.getElementById('searchInput').value = topic;
     searchPapers();
+}
+
+let topicSuggestions = []; // Глобальная переменная для хранения тем
+let debounceTimer; // Хранит ID таймера
+
+async function loadTopics() {
+    if (topicSuggestions.length > 0) return; // Если темы уже загружены, повторно не загружаем
+
+    try {
+        let response = await fetch("/static/data/title.json"); // Загружаем из JSON
+        if (!response.ok) throw new Error("Ошибка загрузки данных");
+
+        let data = await response.json();
+        //  console.log("Raw JSON data:", data); // Проверка структуры JSON
+
+        if (data.categories && Array.isArray(data.categories)) {
+            topicSuggestions = data.categories.map(item => item.title || '');
+        } else {
+            topicSuggestions = [];
+        }
+
+        //console.log("Темы загружены:", topicSuggestions); // Проверка загруженных данных
+    } catch (error) {
+        console.error("Ошибка загрузки тем:", error);
+    }
+}
+
+// Загружаем темы один раз при загрузке страницы
+window.onload = loadTopics;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('searchInput');
+    const suggestionsBox = document.getElementById('suggestions');
+
+    // Обработчик ввода с дебаунсом (чтобы не было спама вызовов)
+    searchInput.addEventListener('input', function () {
+        clearTimeout(debounceTimer); // Очищаем предыдущий таймер
+
+        debounceTimer = setTimeout(() => {
+            filterSuggestions(); // Запускаем фильтрацию через 300 мс
+        }, 300);
+    });
+
+    function filterSuggestions() {
+        const searchText = searchInput.value.toLowerCase();
+        if (!searchText) {
+            suggestionsBox.style.display = 'none';
+            return;
+        }
+
+        //console.log("Фильтруем по:", searchText);
+
+        const filteredData = topicSuggestions
+            .filter(item => typeof item === 'string' || typeof item === 'number') // Фильтруем только строки/числа
+            .map(item => String(item)) // Преобразуем всё в строки
+            .filter(item => item.toLowerCase().includes(searchText)); // Фильтрация
+
+        showSuggestions(filteredData);
+    }
+
+    function showSuggestions(data) {
+        suggestionsBox.innerHTML = '';
+        if (!data || data.length === 0) {
+            suggestionsBox.style.display = 'none';
+            return;
+        }
+
+        data.forEach((item) => {
+            const div = document.createElement('div');
+            div.classList.add('suggestion');
+            div.textContent = item;
+            div.addEventListener('click', () => {
+                searchInput.value = item;
+                suggestionsBox.style.display = 'none';
+                searchPapers(); // Автоматический запуск поиска
+            });
+            suggestionsBox.appendChild(div);
+        });
+
+        suggestionsBox.style.display = 'block';
+    }
+
+    // Прячем подсказки при клике вне поля
+    document.addEventListener('click', (event) => {
+        if (!searchInput.contains(event.target) && !suggestionsBox.contains(event.target)) {
+            suggestionsBox.style.display = 'none';
+        }
+    });
+});
+function showSuggestions(data) {
+    suggestionsBox.innerHTML = '';
+    if (!data || data.length === 0) {
+        suggestionsBox.style.display = 'none';
+        return;
+    }
+
+    data.forEach(item => {
+        const div = document.createElement('div');
+        div.classList.add('suggestion');
+        div.textContent = item;
+        div.addEventListener('click', () => {
+            searchInput.value = item;
+            suggestionsBox.style.display = 'none';
+        });
+
+        suggestionsBox.appendChild(div);
+    });
+
+    suggestionsBox.style.display = 'block';
 }

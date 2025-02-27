@@ -32,11 +32,13 @@
                     <i class="fab fa-github text-xl"></i>
                     <span>GitHub</span>
                 </a>
-                <button onclick="initiateORCIDAuth()" 
-                        class="bg-white text-violet-600 px-6 py-2 rounded-lg hover:bg-violet-100 transition-all font-medium flex items-center space-x-2">
+                <button onclick="startORCIDAuth()" 
+                        class="bg-white text-violet-600 px-6 py-2 rounded-lg hover:bg-violet-100 transition-all font-medium flex items-center space-x-2"
+                        id = "orcid-login">
                     <i class="fas fa-sign-in-alt"></i>
                     <span>Login with ORCID</span>
                 </button>
+                <div id="user-info"></div>
             </div>
         </div>
     </header>
@@ -110,6 +112,7 @@
                     placeholder="Enter your research topic..." 
                     class="flex-1 px-6 py-4 border border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 shadow-sm text-lg"
                 />
+                <div id="suggestions" class="suggestions-box"></div>
                 <button 
                     onclick="searchPapers()"
                     class="w-full md:w-auto px-8 py-4 bg-gradient-to-r from-violet-500 to-purple-500 text-white font-medium rounded-xl hover:from-violet-600 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 shadow-lg transform hover:scale-105 transition-all text-lg">
@@ -165,5 +168,7 @@
     <script src="/static/js/audio.js"></script>
     <script src="/static/js/arxiv_chart.js"></script>
     <script src="/static/js/search_papers.js"></script>
+    <script type="module" src="/static/js/loginButton.js"></script>
+
 </body>
 </html>

@@ -11,3 +11,29 @@
 .hover-scale:hover {
     transform: scale(1.02);
 }
+.suggestions-box {
+    position: absolute;
+    top: 50%; /* Перемещает список ниже поля ввода */
+    left: 20px;
+    background: white;
+    border: 1px solid #ccc;
+    width: 70%; /* Чтобы список совпадал с полем ввода */
+    max-height: 150px; /* Достаточно для отображения нескольких элементов */
+    border-radius: 8px;
+    overflow-y: auto;
+    display: none;
+    z-index: 10; /* Убедитесь, что он выше других элементов */
+}
+
+.suggestion {
+    padding: 17px;
+    cursor: pointer;
+}
+
+.suggestion:hover {
+    background-color: #f0f0f0;
+}
+
+.suggestion:not(:last-child) {
+    border-bottom: 1px solid #ddd;
+}

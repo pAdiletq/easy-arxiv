@@ -22,13 +22,32 @@ EasyArxiv is a web application designed to simplify the process of searching, re
     ```sh
     pip install -r requirements.txt
     ```
+    
+3. Create a `config.json` file in the /static/data/ directory and add your ORCID credentials:
+```
+{
+    "orcid_client_id": "your_client_id_here",
+    "redirect_uri": "your_redirect_uri_here"
+}
+```
+⚠️ Make sure the file is located at /static/data/config.json so the application can load it properly.
 
-3. Configure the `.env` file with your Google API key:
+4. Configure the `.env` file with your API keys:
     ```
     GOOGLE_API_KEY=your_google_api_key_here
     ```
+    ```
+    CLIENT_ID = your_client_id_here
+    ```
+    ```
+    CLIENT_SECRET = your_client_secret_here
+    ```
+    ```
+    REDIRECT_URI = your_redirect_uri_here
 
-4. Run the application:
+    ```
+
+5. Run the application:
     ```sh
     python app.py
     ```
